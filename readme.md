@@ -1,5 +1,5 @@
 ### Local START
-//запускать из основной паки
+запускать из основной паки
 ````
 docker compose up -d
 docker compose exec api php ./bin/console db.migrations.migrate
@@ -13,15 +13,16 @@ docker compose exec api ./vendor/phpunit/phpunit/phpunit ./tests/
 ````
 
 ### FRONT
-Перед использованием нужно миграции и тесты запустить, они подготовят окружение
-http://localhost/api-doc.html -- api doc
-http://localhost/tickets.html -- список заявок в админке (токен автоматом подставляется)
-http://localhost/widget.html -- всиджет
-http://localhost/ -- пример встроенное виджета
+Перед использованием нужно миграции и тесты запустить, они подготовят окружение  
+http://localhost/api-doc.html -- api doc  
+http://localhost/tickets.html -- список заявок в админке (токен автоматом подставляется)  
+http://localhost/widget.html -- виджет  
+http://localhost/ -- пример встроенное виджета  
 
 ### RPS Tests
-Если пк сильный, то можно рейты повысить. Основной летенси формируется из-за бд и haproxy.
-Если сделать пустую апи ручку, то есть голый фреймворк и парсинг параметров, то 18 тысяч rps
+Если пк сильный, то можно рейты повысить. Основной летенси формируется из-за бд и haproxy.  
+Если сделать пустую апи ручку, то есть голый фреймворк и парсинг параметров, то 18 тысяч rps  
+
 Чистый запрос пустышка
 ````
 import http from "k6/http";
@@ -51,7 +52,7 @@ export default function () {
 K6
 ````
 
-//С запросами в бд
+С запросами в бд
 ````
 docker run --rm -i --ulimit nofile=100000:100000 --network=host grafana/k6 run - <<'K6'
 import http from "k6/http";
