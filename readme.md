@@ -25,6 +25,7 @@ http://localhost/ -- пример встроенное виджета
 
 Чистый запрос пустышка
 ````
+docker run --rm -i --ulimit nofile=100000:100000 --network=host grafana/k6 run - <<'K6'
 import http from "k6/http";
 
 export const options = {
@@ -50,6 +51,7 @@ export default function () {
   });
 }
 K6
+
 ````
 
 С запросами в бд
