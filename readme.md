@@ -14,22 +14,15 @@ docker compose exec api ./vendor/phpunit/phpunit/phpunit ./tests/
 
 ### FRONT
 Перед использованием нужно миграции и тесты запустить, они подготовят окружение
-
 http://localhost/api-doc.html -- api doc
-
 http://localhost/tickets.html -- список заявок в админке (токен автоматом подставляется)
-
 http://localhost/widget.html -- всиджет
-
 http://localhost/ -- пример встроенное виджета
 
 ### RPS Tests
 Если пк сильный, то можно рейты повысить. Основной летенси формируется из-за бд и haproxy.
-
 Если сделать пустую апи ручку, то есть голый фреймворк и парсинг параметров, то 18 тысяч rps
-
 Чистый запрос пустышка
-
 ````
 import http from "k6/http";
 
