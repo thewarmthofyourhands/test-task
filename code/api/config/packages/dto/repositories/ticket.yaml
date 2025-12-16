@@ -1,0 +1,20 @@
+- namespace: App\Dto\Repository\TicketRepository
+  class: RepositoryTicketDto
+  properties:
+    id: int
+    customerId: int
+    topic: string
+    text: string
+    status: string
+    managerReplyDate: null|string
+    createdAt: string
+    updatedAt: string
+
+- namespace: App\Dto\Repository\TicketRepository
+  class: AddTicketDto
+  properties:
+    customerId: int
+    topic: string
+    text: string
+    status: string
+    managerReplyDate: null|string

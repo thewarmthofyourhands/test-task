@@ -1,0 +1,74 @@
+parameters:
+  logger.name: 'main'
+
+services:
+  App:
+    resource: /src
+    exclude: /src/{Application.php}
+
+  Eva\HttpKernel\EventListeners:
+    resource: /vendor/eva/http-kernel/src/EventListeners
+
+  Eva\Console\EventListeners:
+    resource: /vendor/eva/console/src/EventListeners
+
+  Eva\ApiDoc:
+    resource: /vendor/eva/api-doc/src
+
+  Eva\Console\Commands:
+    resource: /vendor/eva/console/src/Commands
+
+  Eva\Database\Migrations:
+    resource: /vendor/eva/database/src/Migrations
+
+  Eva\Http\ClientInterface:
+    class: Eva\Http\Client
+
+  Eva\Database\ConnectionStoreInterface:
+    class: App\Infrastructure\Database\StatefullConnectionStore
+
+  Eva\Console\RouterInterface:
+    class: Eva\Console\Router
+    calls:
+      - setRoutes: '%package.console%'
+
+  Eva\Console\Commands\ListCommand:
+    arguments:
+      commands: '%package.console%'
+
+  Eva\Database\Migrations\Migrator:
+    arguments:
+      config: '%package.schema%'
+
+  Eva\HttpKernel\RouterInterface:
+    class: Eva\HttpKernel\Router
+    calls:
+      - setRoutes: '%package.routes%'
+
+  Psr\Log\LoggerInterface:
+    class: Monolog\Logger
+    arguments:
+      name: '%logger.name%'
+
+  App\EventListeners\ExceptionListener:
+    arguments:
+      appDev: '%env.APP_DEV%'
+
+  App\Manager\RedisManager:
+    arguments:
+      connectionUrl: '%env.REDIS_URL%'
+
+  App\RequestService\S3RequestService:
+    arguments:
+      endpoint: '%env.MINIO_URL%'
+      internalEndpoint: '%env.MINIO_INTERNAL_URL%'
+      key: '%env.MINIO_KEY%'
+      secret: '%env.MINIO_SECRET%'
+
+  Eva\DtoCreator\DtoCreatorCommand:
+    class: Eva\DtoCreator\DtoCreatorCommand
+
+service_providers:
+  - Eva\EventDispatcher\EventDispatcherProvider
+  - App\ServiceProviders\LoggerServiceProvider
+  - App\ServiceProviders\DatabaseConnectionServiceProvider

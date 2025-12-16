@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Support Widget</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        :root { color-scheme: light; }
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f6f7fb; }
+        .wrap { max-width: 760px; margin: 24px auto; padding: 0 16px; }
+        .card { background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 18px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid1 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        label { display: grid; gap: 6px; font-size: 12px; color: #333; }
+        input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d7dbe7; border-radius: 10px; font: inherit; background: #fff; }
+        textarea { min-height: 120px; resize: vertical; }
+        .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        button { border: 0; border-radius: 12px; padding: 10px 14px; background: #111827; color: #fff; cursor: pointer; font: inherit; }
+        button[disabled] { opacity: .55; cursor: not-allowed; }
+        .muted { color: #6b7280; font-size: 12px; }
+        .files { margin-top: 10px; border: 1px dashed #c7ccda; border-radius: 12px; padding: 12px; background: #fafbff; }
+        .file-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #fff; border: 1px solid #e6e9f2; margin-top: 8px; }
+        .file-left { display: grid; gap: 2px; }
+        .badge { font-size: 11px; color: #111827; background: #eef2ff; padding: 2px 8px; border-radius: 999px; width: fit-content; }
+        .ok { background: #ecfdf5; color: #065f46; }
+        .err { background: #fef2f2; color: #991b1b; }
+        pre { white-space: pre-wrap; word-break: break-word; background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 12px; overflow: auto; }
+        .footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="card">
+        <h1>Создать заявку</h1>
+
+        <form id="ticketForm" autocomplete="on">
+            <div class="grid">
+                <label>
+                    Имя
+                    <input name="name" required placeholder="customer1" />
+                </label>
+                <label>
+                    Телефон
+                    <input name="phone" required placeholder="+995551522047" />
+                </label>
+            </div>
+
+            <div class="grid">
+                <label>
+                    Email
+                    <input name="email" type="email" required placeholder="customer1@example.com" />
+                </label>
+                <label>
+                    Тема
+                    <input name="topic" required placeholder="topic1" />
+                </label>
+            </div>
+
+            <div class="grid1">
+                <label>
+                    Текст
+                    <textarea name="text" required placeholder="Опишите проблему..."></textarea>
+                </label>
+            </div>
+
+            <div class="files">
+                <div class="row">
+                    <input id="fileInput" type="file" multiple />
+                    <button type="button" id="clearFilesBtn">Очистить файлы</button>
+                    <span class="muted">Файлы сначала грузятся в /api/uploads/tmp, потом прикрепляются по id</span>
+                </div>
+                <div id="filesList"></div>
+            </div>
+
+            <div class="footer">
+                <button id="submitBtn" type="submit">Отправить</button>
+                <span id="status" class="muted"></span>
+            </div>
+
+            <div style="margin-top:12px">
+                <pre id="result" hidden></pre>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ====== НАСТРОЙКИ ======
+    // Если страничка будет на другом домене/порту, укажи base URL, например: "https://api.example.com"
+    const API_BASE = ""; // "" = тот же origin
+    // =======================
+
+    const $ = (sel) => document.querySelector(sel);
+    const fileInput = $("#fileInput");
+    const filesList = $("#filesList");
+    const statusEl = $("#status");
+    const resultEl = $("#result");
+    const submitBtn = $("#submitBtn");
+    const clearFilesBtn = $("#clearFilesBtn");
+
+    // Внутреннее состояние загрузок
+    // items: { file, state: 'pending'|'uploading'|'done'|'error', tmpId?, tmpUrl?, tagging?, error? }
+    let items = [];
+
+    function setStatus(text) {
+        statusEl.textContent = text || "";
+    }
+
+    function showResult(objOrText) {
+        resultEl.hidden = false;
+        resultEl.textContent = typeof objOrText === "string" ? objOrText : JSON.stringify(objOrText, null, 2);
+    }
+
+    function hideResult() {
+        resultEl.hidden = true;
+        resultEl.textContent = "";
+    }
+
+    function humanSize(bytes) {
+        const units = ["B","KB","MB","GB"];
+        let i = 0;
+        let v = bytes;
+        while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+        return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    function renderFiles() {
+        filesList.innerHTML = "";
+        items.forEach((it, idx) => {
+            const div = document.createElement("div");
+            div.className = "file-item";
+
+            const left = document.createElement("div");
+            left.className = "file-left";
+
+            const name = document.createElement("div");
+            name.textContent = `${it.file.name} (${humanSize(it.file.size)})`;
+
+            const badge = document.createElement("div");
+            badge.className = "badge";
+            if (it.state === "done") { badge.classList.add("ok"); badge.textContent = `готово • id=${it.tmpId}`; }
+            else if (it.state === "uploading") { badge.textContent = "загрузка..."; }
+            else if (it.state === "error") { badge.classList.add("err"); badge.textContent = `ошибка: ${it.error || "unknown"}`; }
+            else { badge.textContent = "ожидает"; }
+
+            left.appendChild(name);
+            left.appendChild(badge);
+
+            const right = document.createElement("div");
+            const del = document.createElement("button");
+            del.type = "button";
+            del.textContent = "Удалить";
+            del.style.background = "#374151";
+            del.onclick = () => {
+                items.splice(idx, 1);
+                renderFiles();
+            };
+
+            right.appendChild(del);
+            div.appendChild(left);
+            div.appendChild(right);
+            filesList.appendChild(div);
+        });
+    }
+
+    clearFilesBtn.addEventListener("click", () => {
+        items = [];
+        fileInput.value = "";
+        renderFiles();
+    });
+
+    fileInput.addEventListener("change", () => {
+        hideResult();
+        const picked = Array.from(fileInput.files || []);
+        // добавляем в очередь (не автозагружаем, загрузим при submit)
+        picked.forEach(f => items.push({ file: f, state: "pending" }));
+        renderFiles();
+        // чтобы можно было выбрать те же файлы снова
+        fileInput.value = "";
+    });
+
+    async function apiFetch(path, options = {}) {
+        const url = API_BASE + path;
+        const res = await fetch(url, {
+            ...options,
+            headers: {
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            }
+        });
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch (e) {}
+        return { res, text, json };
+    }
+
+    async function createTmpForFile(file) {
+        // по вашему тесту: { "fileNameWithExt": "test.jpg" }
+        const body = JSON.stringify({ fileNameWithExt: file.name });
+        const { res, json, text } = await apiFetch("/api/uploads/tmp", { method: "POST", body });
+        if (!res.ok) {
+            const msg = (json && (json.message || json.error)) || text || `HTTP ${res.status}`;
+            throw new Error(`tmp create failed: ${msg}`);
+        }
+        // ожидаем: data: { url, id, tagging }
+        const data = json?.data;
+        if (!data?.url || !data?.id || !data?.tagging) {
+            throw new Error("tmp create failed: response missing data.url/data.id/data.tagging");
+        }
+        return data;
+    }
+
+    async function putFileToSignedUrl(url, tagging, file) {
+        // Важно: никаких Content-Type не ставим насильно, пусть браузер сам.
+        // Важно2: x-amz-tagging как в тесте.
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "x-amz-tagging": tagging
+            },
+            body: file
+        });
+        if (!res.ok) {
+            const t = await res.text().catch(() => "");
+            throw new Error(`upload failed: HTTP ${res.status} ${t || ""}`.trim());
+        }
+        return true;
+    }
+
+    async function ensureAllUploads() {
+        // грузим последовательно, чтобы не устроить фейерверк из 15 PUT-ов
+        for (const it of items) {
+            if (it.state === "done") continue;
+            it.state = "uploading";
+            it.error = null;
+            renderFiles();
+
+            try {
+                const tmp = await createTmpForFile(it.file);
+                it.tmpId = tmp.id;
+                it.tmpUrl = tmp.url;
+                it.tagging = tmp.tagging;
+
+                await putFileToSignedUrl(it.tmpUrl, it.tagging, it.file);
+
+                it.state = "done";
+                renderFiles();
+            } catch (e) {
+                it.state = "error";
+                it.error = e?.message || String(e);
+                renderFiles();
+                throw e;
+            }
+        }
+        return items.map(it => it.tmpId).filter(Boolean);
+    }
+
+    function collectFormPayload(form) {
+        const fd = new FormData(form);
+        return {
+            customer: {
+                name: (fd.get("name") || "").toString().trim(),
+                phone: (fd.get("phone") || "").toString().trim(),
+                email: (fd.get("email") || "").toString().trim()
+            },
+            topic: (fd.get("topic") || "").toString().trim(),
+            text: (fd.get("text") || "").toString().trim(),
+        };
+    }
+
+    $("#ticketForm").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        hideResult();
+        setStatus("");
+        submitBtn.disabled = true;
+
+        try {
+            setStatus("Загружаю файлы...");
+            const attachmentIds = await ensureAllUploads();
+
+            setStatus("Создаю заявку...");
+            const payload = collectFormPayload(ev.target);
+            payload.attachments = attachmentIds;
+
+            const { res, json, text } = await apiFetch("/api/tickets", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                setStatus("Готово.");
+                showResult(json || text || "OK");
+                // по желанию: очистить форму/файлы
+                // ev.target.reset();
+                // items = [];
+                // renderFiles();
+                return;
+            }
+
+            // Ошибки API в вашем стиле: { message, code, data:null }
+            const msg = json?.message || text || `HTTP ${res.status}`;
+            setStatus(`Ошибка: ${msg}`);
+            showResult(json || { status: res.status, message: msg });
+        } catch (e) {
+            setStatus(`Ошибка: ${e?.message || e}`);
+            showResult({ error: e?.message || String(e) });
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+
+    renderFiles();
+</script>
+</body>
+</html>

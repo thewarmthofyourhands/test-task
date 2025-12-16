@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "cleanup-tmp-by-tag",
+      "Status": "Enabled",
+      "Filter": {
+        "Tag": {
+          "Key": "state",
+          "Value": "tmp"
+        }
+      },
+      "Expiration": {
+        "Days": 1
+      }
+    }
+  ]
+}

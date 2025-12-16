@@ -1,0 +1,9 @@
+- namespace: App\Dto\Repository\TicketFileRepository
+  class: RepositoryTicketFileDto
+  properties:
+    id: int
+    ticketId: int
+    name: string
+    path: string
+    createdAt: string
+    updatedAt: string

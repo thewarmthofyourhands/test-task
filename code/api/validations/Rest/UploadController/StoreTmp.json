@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "fileNameWithExt": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 100,
+      "pattern": "^[^\\s]+\\.(jpg|png|jpeg|webp|gif)$"
+    }
+  },
+  "required": ["fileNameWithExt"],
+  "additionalProperties": false
+}

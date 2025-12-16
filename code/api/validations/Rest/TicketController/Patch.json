@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["NEW", "IN_PROCESS", "DONE"]
+    }
+  },
+  "required": ["status"],
+  "additionalProperties": false
+}

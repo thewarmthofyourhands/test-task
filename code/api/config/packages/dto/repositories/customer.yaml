@@ -1,0 +1,16 @@
+- namespace: App\Dto\Repository\CustomerRepository
+  class: RepositoryCustomerDto
+  properties:
+    id: int
+    name: string
+    phone: string
+    email: string
+    createdAt: string
+    updatedAt: string
+
+- namespace: App\Dto\Repository\CustomerRepository
+  class: AddCustomerDto
+  properties:
+    name: string
+    phone: string
+    email: string

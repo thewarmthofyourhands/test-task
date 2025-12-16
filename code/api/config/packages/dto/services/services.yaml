@@ -1,0 +1,47 @@
+- namespace: App\Dto\Service\CustomerService
+  class: AddCustomerDto
+  properties:
+    name: string
+    phone: string
+    email: string
+
+- namespace: App\Dto\Service\CustomerService
+  class: ServiceCustomerDto
+  properties:
+    id: int
+    name: string
+    phone: string
+    email: string
+    createdAt: \DateTimeImmutable
+    updatedAt: \DateTimeImmutable
+
+- namespace: App\Dto\Service\TicketService
+  class: ServiceTicketDto
+  properties:
+    id: int
+    customerId: int
+    topic: string
+    text: string
+    status: \App\Enum\Application\Service\TicketService\TicketStatusEnum
+    managerReplyDate: null|\DateTimeImmutable
+    createdAt: \DateTimeImmutable
+    updatedAt: \DateTimeImmutable
+
+- namespace: App\Dto\Service\TicketService
+  class: AddTicketDto
+  properties:
+    customerId: int
+    topic: string
+    text: string
+    status: \App\Enum\Application\Service\TicketService\TicketStatusEnum
+    managerReplyDate: null|\DateTimeImmutable
+
+- namespace: App\Dto\Service\UploadService
+  class: ServiceTicketFileDto
+  properties:
+    id: int
+    ticketId: int
+    path: string
+    link: string
+    createdAt: \DateTimeImmutable
+    updatedAt: \DateTimeImmutable

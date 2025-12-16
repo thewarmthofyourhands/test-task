@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticket detail</title>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f6f7fb; }
+        .wrap { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+        .card { background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 18px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        label { display: grid; gap: 6px; font-size: 12px; color: #333; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid #d7dbe7; border-radius: 10px; font: inherit; background: #fff; }
+        button { border: 0; border-radius: 12px; padding: 10px 14px; background: #111827; color: #fff; cursor: pointer; font: inherit; }
+        button.secondary { background: #374151; }
+        button[disabled] { opacity: .55; cursor: not-allowed; }
+        .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .muted { color:#6b7280; font-size:12px; }
+        .err { color:#991b1b; background:#fef2f2; border:1px solid #fecaca; padding:10px 12px; border-radius:12px; margin-top:12px; }
+        .ok  { color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0; padding:10px 12px; border-radius:12px; margin-top:12px; }
+        .kv { display:grid; grid-template-columns: 160px 1fr; gap: 8px 12px; font-size: 13px; }
+        .kv div:nth-child(odd) { color:#6b7280; }
+        .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#1f2937; }
+        .badge.NEW { background:#eef2ff; }
+        .badge.IN_PROCESS { background:#fff7ed; }
+        .badge.DONE { background:#ecfdf5; }
+        .box { margin-top:12px; padding:12px; border-radius:12px; border:1px solid #eef0f6; background:#fafbff; }
+        ul { margin: 8px 0 0 18px; }
+        pre { white-space: pre-wrap; word-break: break-word; background:#0b1020; color:#e5e7eb; padding:12px; border-radius:12px; overflow:auto; }
+        a { color:#1f2937; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="card">
+        <div class="row" style="justify-content:space-between">
+            <h1 id="title">Заявка</h1>
+            <a href="tickets.html" class="muted">← к списку</a>
+        </div>
+
+        <div class="row" style="margin-bottom:12px">
+            <label style="flex:1; min-width:260px">
+                Authorization token
+                <input id="authToken" placeholder="token12345" />
+            </label>
+
+            <label style="width:220px">
+                Новый статус
+                <select id="newStatus">
+                    <option value="NEW">NEW</option>
+                    <option value="IN_PROCESS">IN_PROCESS</option>
+                    <option value="DONE">DONE</option>
+                </select>
+            </label>
+
+            <div class="row" style="align-self:flex-end">
+                <button id="btnReload" class="secondary" type="button">Обновить</button>
+                <button id="btnPatch" type="button">Сохранить статус</button>
+            </div>
+        </div>
+
+        <div id="msg"></div>
+
+        <div class="box">
+            <div class="kv" id="kv"></div>
+        </div>
+
+        <div class="box">
+            <strong style="font-size:13px">Текст</strong>
+            <div id="text" style="margin-top:8px; white-space:pre-wrap; font-size:13px"></div>
+        </div>
+
+        <div class="box">
+            <strong style="font-size:13px">Вложения</strong>
+            <div id="attachments" class="muted" style="margin-top:8px">Нет данных.</div>
+        </div>
+
+        <pre id="debug" hidden></pre>
+    </div>
+</div>
+
+<script>
+    const API_BASE = ""; // если надо: "https://api.example.com"
+    const $ = (s) => document.querySelector(s);
+
+    const authTokenEl = $("#authToken");
+    const newStatusEl = $("#newStatus");
+    const btnReload = $("#btnReload");
+    const btnPatch = $("#btnPatch");
+    const msgEl = $("#msg");
+    const titleEl = $("#title");
+    const kvEl = $("#kv");
+    const textEl = $("#text");
+    const attachmentsEl = $("#attachments");
+    const debugEl = $("#debug");
+
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id");
+
+    function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+    }
+
+    function showMsg(type, text) {
+        msgEl.innerHTML = "";
+        if (!text) return;
+        const div = document.createElement("div");
+        div.className = type === "ok" ? "ok" : "err";
+        div.textContent = text;
+        msgEl.appendChild(div);
+    }
+
+    function setDebug(obj) {
+        debugEl.hidden = !obj;
+        debugEl.textContent = obj ? JSON.stringify(obj, null, 2) : "";
+    }
+
+    async function apiFetch(path, { method = "GET", body = null } = {}) {
+        const headers = {};
+        // const token = authTokenEl.value.trim();
+        const token = 'token12345';
+        if (token) headers["Authorization"] = token;
+
+        const opts = { method, headers };
+        if (body !== null) {
+            headers["Content-Type"] = "application/json";
+            opts.body = JSON.stringify(body);
+        }
+
+        const res = await fetch(API_BASE + path, opts);
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch {}
+        return { res, text, json };
+    }
+
+    function renderTicket(t) {
+        titleEl.textContent = `Заявка #${t.id ?? id ?? "?"}`;
+
+        const customer = t.customer ?? {};
+        const createdAt = t.createdAt ?? t.created_at ?? t.created ?? "";
+        const status = t.status ?? "";
+        const topic = t.topic ?? "";
+        const email = customer.email ?? "";
+        const phone = customer.phone ?? "";
+        const name = customer.name ?? "";
+
+        kvEl.innerHTML = `
+        <div>ID</div><div>${escapeHtml(t.id ?? "")}</div>
+        <div>Статус</div><div><span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span></div>
+        <div>Тема</div><div>${escapeHtml(topic)}</div>
+        <div>Создано</div><div>${escapeHtml(createdAt)}</div>
+        <div>Клиент</div><div>${escapeHtml(name)}</div>
+        <div>Email</div><div>${escapeHtml(email)}</div>
+        <div>Телефон</div><div>${escapeHtml(phone)}</div>
+      `;
+
+        textEl.textContent = t.text ?? "";
+
+        // Вложения: API может вернуть строки, объекты, ссылки, что угодно.
+        // Покажем максимально полезно.
+        const atts = t.attachments ?? t.files ?? t.documents ?? null;
+
+        if (!atts || (Array.isArray(atts) && atts.length === 0)) {
+            attachmentsEl.textContent = "Нет вложений.";
+            return;
+        }
+
+        const arr = Array.isArray(atts) ? atts : (Array.isArray(atts.items) ? atts.items : []);
+        if (!arr.length) {
+            attachmentsEl.textContent = "Формат вложений неизвестен, см. debug ниже.";
+            return;
+        }
+
+        const ul = document.createElement("ul");
+
+        for (const a of arr) {
+            const li = document.createElement("li");
+
+            // варианты: "tickets/xxx", {id, url}, {key, link}, и т.д.
+            const idOrKey = (typeof a === "string") ? a : (a.id ?? a.key ?? a.name ?? JSON.stringify(a));
+            const url = (typeof a === "object" && a) ? (a.url ?? a.link ?? a.downloadUrl ?? a.download_url) : null;
+
+            if (url) {
+                li.innerHTML = `<img style="max-width: 100px" src="${escapeHtml(url)}"> <a href="${escapeHtml(url)}" target="_blank">Скачать</a> <span class="muted">(${escapeHtml(idOrKey)})</span>`;
+            } else {
+                li.innerHTML = `<span>${escapeHtml(idOrKey)}</span> <span class="muted">(URL не пришёл от API)</span>`;
+            }
+
+            ul.appendChild(li);
+        }
+
+        attachmentsEl.innerHTML = "";
+        attachmentsEl.className = "";
+        attachmentsEl.appendChild(ul);
+
+        if (status) newStatusEl.value = status;
+    }
+
+    async function loadTicket() {
+        showMsg("", "");
+        setDebug(null);
+
+        if (!id) {
+            showMsg("err", "Нет id в URL. Используй tickets-detail.html?id=123");
+            return;
+        }
+
+        btnReload.disabled = true;
+        btnPatch.disabled = true;
+
+        try {
+            const { res, json, text } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}`);
+            if (!res.ok) {
+                const msg = json?.message || text || `HTTP ${res.status}`;
+                showMsg("err", msg);
+                setDebug(json || { status: res.status, raw: text });
+                return;
+            }
+
+            const t = json?.data ?? json;
+            renderTicket(t);
+            showMsg("ok", "ОК.");
+            setDebug(json);
+        } catch (e) {
+            showMsg("err", e?.message || String(e));
+        } finally {
+            btnReload.disabled = false;
+            btnPatch.disabled = false;
+        }
+    }
+
+    async function patchStatus() {
+        showMsg("", "");
+        setDebug(null);
+
+        if (!id) {
+            showMsg("err", "Нет id в URL.");
+            return;
+        }
+
+        const status = newStatusEl.value;
+        btnPatch.disabled = true;
+
+        try {
+            // валидация: {"status": enum NEW|IN_PROCESS|DONE}
+            const { res, json, text } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}`, {
+                method: "PATCH",
+                body: { status }
+            });
+
+            if (!res.ok) {
+                const msg = json?.message || text || `HTTP ${res.status}`;
+                showMsg("err", msg);
+                setDebug(json || { status: res.status, raw: text });
+                return;
+            }
+
+            showMsg("ok", "Статус сохранён.");
+            setDebug(json);
+            await loadTicket(); // перечитать и показать актуально
+        } catch (e) {
+            showMsg("err", e?.message || String(e));
+        } finally {
+            btnPatch.disabled = false;
+        }
+    }
+
+    btnReload.addEventListener("click", loadTicket);
+    btnPatch.addEventListener("click", patchStatus);
+
+    loadTicket();
+</script>
+</body>
+</html>

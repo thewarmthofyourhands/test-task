@@ -1,0 +1,38 @@
+- namespace: App\Dto\UseCase\Ticket
+  class: AddTicketDto
+  properties:
+    customer: \App\Dto\UseCase\Customer\AddCustomerDto
+    topic: string
+    text: string
+    attachments: array
+
+- namespace: App\Dto\UseCase\Customer
+  class: AddCustomerDto
+  properties:
+    name: string
+    phone: string
+    email: string
+
+- namespace: App\Dto\UseCase\Customer
+  class: CustomerDto
+  properties:
+    id: int
+    name: string
+    phone: string
+    email: string
+    createdAt: \DateTimeImmutable
+    updatedAt: \DateTimeImmutable
+
+- namespace: App\Dto\UseCase\Ticket
+  class: TicketDto
+  properties:
+    customer: \App\Dto\UseCase\Customer\CustomerDto
+    attachments: array
+    id: int
+    customerId: int
+    topic: string
+    text: string
+    status: \App\Enum\Application\Service\TicketService\TicketStatusEnum
+    managerReplyDate: null|\DateTimeImmutable
+    createdAt: \DateTimeImmutable
+    updatedAt: \DateTimeImmutable

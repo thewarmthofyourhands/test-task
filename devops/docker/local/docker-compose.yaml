@@ -1,0 +1,77 @@
+services:
+  haproxy:
+    build:
+      context: ./images/haproxy
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./images/haproxy/haproxy_dev.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    ports:
+      - 80:80
+  api:
+    build:
+      context: ./images/api
+      dockerfile: ./Dockerfile
+    tty: true
+    working_dir: /code
+#    ports:
+#      - 80:80
+    volumes:
+      - ./../../../code/api:/code
+  app:
+    build:
+      context: ./images/app
+      dockerfile: ./Dockerfile
+    restart: always
+    working_dir: /code
+    volumes:
+      - ./../../../code/app:/code
+      - ./images/app/default.conf:/etc/nginx/conf.d/default.conf
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - '6379:6379'
+  db:
+    image: mariadb:latest
+    restart: always
+    environment:
+      - MYSQL_DATABASE=db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=pass
+      - MYSQL_ROOT_PASSWORD=pass
+    volumes:
+      - db-test-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345678
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    restart: "no"
+    volumes:
+      - ./images/minio/lifecycle.json:/config/lifecycle.json:ro
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minio minio12345678 >/dev/null 2>&1; do
+        sleep 1;
+      done;
+      mc alias set local http://minio:9000 minio minio12345678;
+      mc mb -p local/uploads;
+      mc ilm rule import local/uploads < /config/lifecycle.json;
+      mc ilm rule ls local/uploads;
+      echo 'lifecycle applied';
+      "
+volumes:
+  db-test-data:
+  minio_data:

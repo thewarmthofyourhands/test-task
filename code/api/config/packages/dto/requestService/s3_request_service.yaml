@@ -1,0 +1,6 @@
+- namespace: App\Dto\RequestService
+  class: DataForTmpUploadFileDto
+  properties:
+    url: string
+    id: string
+    tagging: string

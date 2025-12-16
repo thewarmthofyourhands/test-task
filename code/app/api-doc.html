@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>API Docs (OpenAPI YAML)</title>
+
+    <!-- Swagger UI -->
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>
+        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+        .topbar { display: none; } /* swagger ui topbar */
+        .app {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            height: 100vh;
+        }
+        .left {
+            border-right: 1px solid #e5e7eb;
+            padding: 16px;
+            overflow: auto;
+            background: #fafafa;
+        }
+        .right { overflow: auto; }
+        h1 { font-size: 18px; margin: 0 0 10px; }
+        p { margin: 6px 0 12px; color: #374151; font-size: 13px; line-height: 1.4; }
+        textarea {
+            width: 100%;
+            min-height: 55vh;
+            resize: vertical;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+            box-sizing: border-box;
+        }
+        .row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        button {
+            cursor: pointer;
+            border: 1px solid #111827;
+            background: #111827;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        button.secondary {
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+            white-space: pre-wrap;
+        }
+        .hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        @media (max-width: 980px) {
+            .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+            .left { border-right: none; border-bottom: 1px solid #e5e7eb; }
+            textarea { min-height: 35vh; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="left">
+        <h1>OpenAPI YAML → Docs</h1>
+        <p>
+            Paste your OpenAPI YAML and render docs.
+            If the YAML is invalid, you’ll get an error instead of pretty pictures. Shocking, I know.
+        </p>
+
+        <textarea id="yamlInput" spellcheck="false"></textarea>
+
+        <div class="row">
+            <button id="renderBtn">Render</button>
+            <button id="loadSampleBtn" class="secondary">Load sample</button>
+            <button id="clearBtn" class="secondary">Clear</button>
+        </div>
+
+        <div class="status" id="status"></div>
+        <div class="hint">
+            Tip: put this file behind auth if your API isn’t public. Humans love leaking secrets.
+        </div>
+    </div>
+
+    <div class="right">
+        <div id="swagger-ui"></div>
+    </div>
+</div>
+
+<!-- Dependencies -->
+<script src="https://unpkg.com/js-yaml@4/dist/js-yaml.min.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+
+<script>
+    // Put your YAML here to prefill
+//     const DEFAULT_YAML = `openapi: 3.0.3
+// info:
+//   title: Tickets API
+//   version: 0.1.0
+// servers:
+//   - url: /
+// paths: {}
+// components: {}
+// `;
+    const DEFAULT_YAML = `openapi: 3.0.3
+info:
+  title: Tickets API
+  version: 0.1.0
+  description: Generated from integration tests (TicketResourceTest).
+servers:
+  - url: /
+
+tags:
+  - name: Uploads
+  - name: Tickets
+
+paths:
+  /api/uploads/tmp:
+    post:
+      tags: [Uploads]
+      summary: Create temporary upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTmpUploadRequest"
+            example:
+              fileNameWithExt: test.jpg
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponseTmpUploadCreated"
+              example:
+                message: CREATED
+                code: CREATED
+                data:
+                  id: tickets/693f1418b2abe_test
+                  url: https://storage.example.com/presigned-put-url
+                  tagging: state=tmp
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+              example:
+                message: VALIDATION_ERROR
+                code: VALIDATION_ERROR
+                data:
+                  /fileNameWithExt:
+                    - "The string should match pattern: ^[^\\\\s]+\\\\.(jpg|png|jpeg|webp|gif)$"
+
+  /api/tickets:
+    post:
+      tags: [Tickets]
+      summary: Create ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketRequest"
+            example:
+              customer:
+                name: customer1
+                phone: "+995551522047"
+                email: customer1@example.com
+              topic: topic1
+              text: long text
+              attachments:
+                - tickets/693f1418b2abe_test
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponseTicketCreated"
+              example:
+                message: CREATED
+                code: CREATED
+                data:
+                  id: 123
+        "400":
+          description: Submit limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseNullData"
+              example:
+                message: SUBMIT_LIMIT
+                code: SUBMIT_LIMIT
+                data: null
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+              example:
+                message: VALIDATION_ERROR
+                code: VALIDATION_ERROR
+                data:
+                  /customer/phone:
+                    - "The string should match pattern: ^\\\\+[1-9]\\\\d{1,14}$"
+    get:
+      tags: [Tickets]
+      summary: List tickets
+      security:
+        - TokenAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+        - $ref: "#/components/parameters/FilterEmail"
+        - $ref: "#/components/parameters/FilterPhone"
+        - $ref: "#/components/parameters/FilterStatus"
+        - $ref: "#/components/parameters/FilterCreatedAtFrom"
+        - $ref: "#/components/parameters/FilterCreatedAtTo"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                message: DEFAULT
+                code: DEFAULT
+                data: []
+
+  /api/tickets/{id}:
+    get:
+      tags: [Tickets]
+      summary: Get ticket by id
+      security:
+        - TokenAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponseTicket"
+              example:
+                message: DEFAULT
+                code: DEFAULT
+                data:
+                  id: 123
+                  status: NEW
+    patch:
+      tags: [Tickets]
+      summary: Change ticket status
+      security:
+        - TokenAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeTicketStatusRequest"
+            example:
+              status: IN_PROCESS
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponseNullData"
+              example:
+                message: DEFAULT
+                code: DEFAULT
+                data: null
+
+  /api/tickets/statistics:
+    get:
+      tags: [Tickets]
+      summary: Tickets statistics
+      security:
+        - TokenAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                message: DEFAULT
+                code: DEFAULT
+                data: {}
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Token string in Authorization header (tests use: token12345).'
+
+  parameters:
+    AuthHeader:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      example: token12345
+
+    FilterEmail:
+      name: filter[email]
+      in: query
+      required: false
+      schema:
+        type: string
+      example: customer
+
+    FilterPhone:
+      name: filter[phone]
+      in: query
+      required: false
+      schema:
+        type: string
+      example: "551"
+
+    FilterStatus:
+      name: filter[status]
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/TicketStatus"
+      example: IN_PROCESS
+
+    FilterCreatedAtFrom:
+      name: filter[createdAtFrom]
+      in: query
+      required: false
+      schema:
+        type: string
+        description: Date-time string as used in tests (space-separated).
+      example: "2022-01-01 22:22:22"
+
+    FilterCreatedAtTo:
+      name: filter[createdAtTo]
+      in: query
+      required: false
+      schema:
+        type: string
+        description: Date-time string as used in tests (space-separated).
+      example: "2026-01-01 23:23:23"
+
+  schemas:
+    # ---- Common envelope ----
+    SuccessResponse:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          description: Application success message enum value.
+        code:
+          type: string
+          description: Application success code enum value.
+        data:
+          nullable: true
+
+    SuccessResponseNullData:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: "null"
+
+    ErrorResponseNullData:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          description: Application error message enum value.
+        code:
+          type: string
+          description: Application error code enum value.
+        data:
+          type: "null"
+
+    ValidationErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          example: VALIDATION_ERROR
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        data:
+          type: object
+          description: Map of JSON pointer to list of validation messages.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            /customer/phone:
+              - "The string should match pattern: ^\\\\+[1-9]\\\\d{1,14}$"
+
+    # ---- Uploads ----
+    CreateTmpUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [fileNameWithExt]
+      properties:
+        fileNameWithExt:
+          type: string
+          description: Filename with extension.
+          pattern: '^[^\\s]+\\.(jpg|png|jpeg|webp|gif)$'
+          example: test.jpg
+
+    TmpUpload:
+      type: object
+      additionalProperties: false
+      required: [id, url, tagging]
+      properties:
+        id:
+          type: string
+          description: Temporary object id (later used in attachments).
+          example: tickets/693f1418b2abe_test
+        url:
+          type: string
+          description: Presigned PUT URL.
+          example: https://storage.example.com/presigned-put-url
+        tagging:
+          type: string
+          description: Tagging header value for upload (x-amz-tagging).
+          example: state=tmp
+
+    SuccessResponseTmpUploadCreated:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          example: CREATED
+        code:
+          type: string
+          example: CREATED
+        data:
+          $ref: "#/components/schemas/TmpUpload"
+
+    # ---- Tickets ----
+    CreateTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [customer, topic, text, attachments]
+      properties:
+        customer:
+          $ref: "#/components/schemas/TicketCustomer"
+        topic:
+          type: string
+          example: topic1
+        text:
+          type: string
+          example: long text
+        attachments:
+          type: array
+          items:
+            type: string
+          example:
+            - tickets/693f1418b2abe_test
+
+    TicketCustomer:
+      type: object
+      additionalProperties: false
+      required: [name, phone, email]
+      properties:
+        name:
+          type: string
+          example: customer1
+        phone:
+          type: string
+          pattern: '^\\+[1-9]\\d{1,14}$'
+          example: "+995551522047"
+        email:
+          type: string
+          format: email
+          example: customer1@example.com
+
+    TicketStatus:
+      type: string
+      description: Ticket status enum.
+      enum:
+        - NEW
+        - IN_PROCESS
+
+    ChangeTicketStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/TicketStatus"
+      example:
+        status: IN_PROCESS
+
+    Ticket:
+      type: object
+      additionalProperties: false
+      required: [id, status]
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 123
+        status:
+          $ref: "#/components/schemas/TicketStatus"
+
+    SuccessResponseTicketCreated:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          example: CREATED
+        code:
+          type: string
+          example: CREATED
+        data:
+          type: object
+          additionalProperties: true
+          description: >
+            Response 'data' contains at least 'id' (only that is asserted in tests).
+          required: [id]
+          properties:
+            id:
+              oneOf:
+                - type: integer
+                - type: string
+              example: 123
+
+    SuccessResponseTicket:
+      type: object
+      additionalProperties: false
+      required: [message, code, data]
+      properties:
+        message:
+          type: string
+          example: DEFAULT
+        code:
+          type: string
+          example: DEFAULT
+        data:
+          $ref: "#/components/schemas/Ticket"
+`;
+
+    const elInput = document.getElementById('yamlInput');
+    const elStatus = document.getElementById('status');
+    const renderBtn = document.getElementById('renderBtn');
+    const loadSampleBtn = document.getElementById('loadSampleBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let ui = null;
+
+    function setStatus(msg) {
+        elStatus.textContent = msg || '';
+    }
+
+    function renderYaml(yamlText) {
+        setStatus('');
+        let specObj;
+        try {
+            specObj = window.jsyaml.load(yamlText);
+        } catch (e) {
+            setStatus("YAML parse error:\n" + (e && e.message ? e.message : String(e)));
+            return;
+        }
+
+        if (!specObj || typeof specObj !== 'object') {
+            setStatus("Parsed YAML is empty or not an object. Give it an OpenAPI spec, not existential despair.");
+            return;
+        }
+
+        // Basic sanity check
+        if (!specObj.openapi || !String(specObj.openapi).startsWith('3.')) {
+            setStatus("This doesn't look like OpenAPI 3.x (missing/invalid 'openapi' field).");
+            // Still try to render, but warn.
+        }
+
+        // Destroy previous UI if any
+        const container = document.getElementById('swagger-ui');
+        container.innerHTML = '';
+
+        ui = SwaggerUIBundle({
+            spec: specObj,
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            layout: "BaseLayout",
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            // Nice defaults
+            defaultModelsExpandDepth: 1,
+            defaultModelExpandDepth: 1,
+            docExpansion: "list",
+            displayRequestDuration: true,
+            tryItOutEnabled: true
+        });
+
+        setStatus("Rendered ✓");
+    }
+
+    // Events
+    renderBtn.addEventListener('click', () => renderYaml(elInput.value));
+    loadSampleBtn.addEventListener('click', () => { elInput.value = DEFAULT_YAML; setStatus("Loaded sample."); });
+    clearBtn.addEventListener('click', () => { elInput.value = ''; setStatus('Cleared.'); });
+
+    // Init
+    elInput.value = DEFAULT_YAML;
+    renderYaml(elInput.value);
+</script>
+</body>
+</html>

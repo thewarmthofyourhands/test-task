@@ -1,0 +1,7 @@
+list: Eva\Console\Commands\ListCommand
+minio.buckets.init: App\Command\MinioBucketsInitCommand
+app.dto.creator: Eva\DtoCreator\DtoCreatorCommand
+db.migrations.create: App\Command\Migrations\CreateCommand
+db.migrations.migrate: App\Command\Migrations\MigrateCommand
+db.migrations.rollback: App\Command\Migrations\RollbackCommand
+db.migrations.status: App\Command\Migrations\StatusCommand

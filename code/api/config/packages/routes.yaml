@@ -1,0 +1,35 @@
+welcome:
+  uri: /api/welcome
+  handler: App\Controller\WelcomeController::index
+  method: GET
+
+store_store_tmp:
+  uri: /api/uploads/tmp
+  handler: App\Controller\UploadController::storeTmp
+  method: POST
+
+ticket_index:
+  uri: /api/tickets
+  handler: App\Controller\Ticket\TicketController::index
+  method: GET
+
+ticket_statistics:
+  uri: /api/tickets/statistics
+  handler: App\Controller\Ticket\StatisticsController::show
+  method: GET
+
+ticket_show:
+  uri: /api/tickets/:id
+  handler: App\Controller\Ticket\TicketController::show
+  method: GET
+
+ticket_store:
+  uri: /api/tickets
+  handler: App\Controller\Ticket\TicketController::store
+  method: POST
+
+ticket_patch:
+  uri: /api/tickets/:id
+  handler: App\Controller\Ticket\TicketController::patch
+  method: PATCH
+
