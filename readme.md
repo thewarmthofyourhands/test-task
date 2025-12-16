@@ -1,5 +1,5 @@
 ### Local START
-запускать из основной паки
+Запускать из основной паки
 ````
 docker compose up -d
 docker compose exec api php ./bin/console db.migrations.migrate
